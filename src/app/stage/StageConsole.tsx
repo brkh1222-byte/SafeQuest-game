@@ -59,6 +59,9 @@ export function StageConsole() {
   const [judgeCount, setJudgeCount] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const runId = useRef(0);
+  const [warm, setWarm] = useState<Warm>({ status: "idle" });
+  const autoWarmed = useRef(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const refreshHealth = useCallback(() => {
     fetch("/api/health")
@@ -91,6 +94,40 @@ export function StageConsole() {
   const canGenerate = Boolean(dangerId || text.trim()) && !loading;
 
   const headers = { "content-type": "application/json", ...(stageKey ? { "x-stage-key": stageKey } : {}) };
+
+  const warmUp = useCallback(async () => {
+    setWarm({ status: "running" });
+    try {
+      const res = await fetch("/api/warmup", { method: "POST", headers: stageKey ? { "x-stage-key": stageKey } : {} });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setWarm({ status: "done", models: data.models });
+    } catch (e) {
+      setWarm({ status: "error", error: (e as Error).message });
+    }
+  }, [stageKey]);
+
+  // Load the models as soon as the stage opens, long before a judge presses the button.
+  useEffect(() => {
+    if (autoWarmed.current || !health?.providers.length) return;
+    if (health.stageKeyRequired && !stageKey) return;
+    autoWarmed.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- kicks off an async request
+    warmUp();
+  }, [health, stageKey, warmUp]);
+
+  async function clearJudges() {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 4000);
+      return;
+    }
+    setConfirmClear(false);
+    const res = await fetch("/api/levels", { method: "DELETE", headers });
+    const data = await res.json().catch(() => ({}));
+    setNotice(res.ok ? `Шүүгчдийн ертөнц цэвэрлэгдлээ (${data.cleared} тоглоом). QR холбоосууд ажилласаар байна.` : `Цэвэрлэж чадсангүй: ${data.error ?? res.status}`);
+    if (res.ok) setJudgeCount(0);
+  }
 
   async function runGenerate() {
     if (!canGenerate) return;
@@ -141,6 +178,7 @@ export function StageConsole() {
           Safe<span className="text-accent">Quest</span> <span className="text-muted">· Тайз</span>
         </h1>
         <StatusChips health={health} onRefresh={refreshHealth} />
+        {(health?.providers.length ?? 0) > 0 && <WarmChip warm={warm} onWarm={warmUp} />}
         <Segmented
           value={prefer}
           onChange={setPrefer}
@@ -157,6 +195,13 @@ export function StageConsole() {
         <Link href="/world/judges" className="btn-ghost py-2 text-sm">
           🏆 Шүүгчдийн ертөнц{judgeCount !== null ? ` (${judgeCount})` : ""}
         </Link>
+        <button
+          onClick={clearJudges}
+          className={`rounded-xl px-3 py-2 text-sm font-black ${confirmClear ? "bg-[#d62828] text-white" : "text-muted"}`}
+          title="Бэлтгэлийн тоглоомуудыг жагсаалтаас хасна (QR холбоос ажилласаар)"
+        >
+          {confirmClear ? "Дахин дарж баталгаажуул" : "🧹 Цэвэрлэх"}
+        </button>
       </header>
 
       {health?.stageKeyRequired && (
@@ -373,6 +418,30 @@ function ColumnResult({ result, isFt, onPlay, onSave }: { result: GenerateResult
         </pre>
       </details>
     </>
+  );
+}
+
+type Warm =
+  | { status: "idle" | "running" }
+  | { status: "done"; models: { provider: string; role: string; model: string; ok: boolean; ms: number; error?: string }[] }
+  | { status: "error"; error: string };
+
+function WarmChip({ warm, onWarm }: { warm: Warm; onWarm: () => void }) {
+  const chip = "rounded-full bg-card px-3 py-1 text-xs font-black shadow-[0_3px_0_#e3d6c2]";
+  if (warm.status === "running") return <span className={`${chip} animate-pulse`}>🔥 Модель халааж байна…</span>;
+  if (warm.status === "done") {
+    const bad = warm.models.filter((m) => !m.ok);
+    const title = warm.models.map((m) => `${m.provider} ${m.role} ${m.model}: ${m.ok ? `${(m.ms / 1000).toFixed(1)}s` : m.error}`).join("\n");
+    return (
+      <button onClick={onWarm} className={`${chip} ${bad.length ? "text-[#a4161a]" : ""}`} title={title}>
+        {bad.length ? `⚠️ ${bad.length} модель ачаалсангүй` : `🔥 ${warm.models.length} модель бэлэн`}
+      </button>
+    );
+  }
+  return (
+    <button onClick={onWarm} className={chip} title={warm.status === "error" ? warm.error : "Load models into memory"}>
+      {warm.status === "error" ? "⚠️ Халаах" : "🔥 Халаах"}
+    </button>
   );
 }
 

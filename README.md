@@ -20,6 +20,10 @@ npm test        # engine, schema, and "every level is valid + playable"
 | `src/game/progress.ts` | Nickname + avatar profiles and stars in localStorage. |
 | `src/app/` | Profile screen, world map, level grid, play screen. |
 
+## Demo day
+
+Follow `docs/demo-runbook.md`: the timeline, the on-stage script, and what to do when something breaks. The stage warms the models when it opens (🔥), **🧹 Цэвэрлэх** clears rehearsal games from the Judges' World, and the City page's **⚡ Бүгдийг дараалан** plays every level back to back for the opening hook. The game has synthesized sound (mute with 🔊) and a fullscreen/landscape button for phones.
+
 ## Stage and AI generation
 
 | Route | What |

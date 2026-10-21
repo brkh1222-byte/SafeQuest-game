@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { SceneRun } from "@/components/SceneRun";
 import { Stars } from "@/components/Stars";
 import type { World } from "@/game/constants";
 import { LEVELS_BY_WORLD, WORLD_INFO } from "@/game/levels";
@@ -16,11 +17,14 @@ export function LevelGrid({ world }: { world: World }) {
   const info = WORLD_INFO.find((w) => w.id === world)!;
   const levels = LEVELS_BY_WORLD[world];
   const ids = levels.map((l) => l.id);
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     if (profile === null) router.replace("/");
   }, [profile, router]);
   if (!profile) return null;
+  // Every level back to back, no locks: the quick playthrough for the demo.
+  if (running) return <SceneRun title={`${info.emoji} ${info.title_mn} · бүгд`} scenes={levels.map((l) => l.scene)} onExit={() => setRunning(false)} />;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-6">
@@ -28,9 +32,14 @@ export function LevelGrid({ world }: { world: World }) {
         <Link href="/" className="btn-ghost px-4 py-2" aria-label="Буцах">
           ←
         </Link>
-        <h1 className="text-3xl font-black">
+        <h1 className="mr-auto text-3xl font-black">
           {info.emoji} {info.title_mn}
         </h1>
+        {levels.length > 0 && (
+          <button className="btn" onClick={() => setRunning(true)}>
+            ⚡ Бүгдийг дараалан
+          </button>
+        )}
       </header>
 
       <ol className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-7">

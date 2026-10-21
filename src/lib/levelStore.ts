@@ -23,6 +23,8 @@ export interface LevelStore {
   save(level: Omit<StoredLevel, "id" | "createdAt">, opts: { judge: boolean }): Promise<StoredLevel>;
   get(id: string): Promise<StoredLevel | null>;
   listJudges(): Promise<StoredLevel[]>;
+  /** Empties the Judges' World list (after rehearsals). Levels stay, so old QR links still work. */
+  clearJudges(): Promise<number>;
 }
 
 // No look-alike characters, so a typed short link is hard to get wrong.
@@ -50,6 +52,11 @@ function upstashStore(redis: Redis): LevelStore {
       if (!ids.length) return [];
       const levels = await redis.mget<(StoredLevel | null)[]>(...ids.map(levelKey));
       return levels.filter((l): l is StoredLevel => !!l);
+    },
+    async clearJudges() {
+      const n = await redis.llen(JUDGES_KEY);
+      await redis.del(JUDGES_KEY);
+      return n;
     },
   };
 }
@@ -97,6 +104,13 @@ function fileStore(file: string): LevelStore {
     async listJudges() {
       const d = await load();
       return d.judges.map((id) => d.levels[id]).filter(Boolean);
+    },
+    clearJudges() {
+      return update((d) => {
+        const n = d.judges.length;
+        d.judges = [];
+        return n;
+      });
     },
   };
 }

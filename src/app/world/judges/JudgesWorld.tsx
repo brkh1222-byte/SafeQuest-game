@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { GameCanvas } from "@/components/GameCanvas";
 import { PlayOverlay } from "@/components/PlayOverlay";
-import { RotateHint } from "@/components/RotateHint";
+import { SceneRun } from "@/components/SceneRun";
 import { SceneThumb } from "@/components/SceneThumb";
-import type { Result } from "@/game/engine";
-import { LESSON_BY_ID } from "@/game/registry/lessons";
 import { parseScene, type Scene } from "@/game/schema";
 
 // Every game the judges generated on stage. "Финал" plays them back to back.
@@ -36,7 +33,7 @@ export function JudgesWorld() {
       .catch(() => setLevels([]));
   }, []);
 
-  if (finale && levels?.length) return <Finale scenes={levels.map((l) => l.scene)} onExit={() => setFinale(false)} />;
+  if (finale && levels?.length) return <SceneRun title="🏆 Шүүгчдийн ертөнц · Финал" scenes={levels.map((l) => l.scene)} onExit={() => setFinale(false)} />;
   if (playing) return <PlayOverlay scene={playing} onClose={() => setPlaying(null)} />;
 
   return (
@@ -72,65 +69,6 @@ export function JudgesWorld() {
           </li>
         ))}
       </ol>
-    </main>
-  );
-}
-
-/** Back-to-back run of every judge game, DWtD style, with a scoreboard. */
-function Finale({ scenes, onExit }: { scenes: Scene[]; onExit: () => void }) {
-  const [index, setIndex] = useState(0);
-  const [results, setResults] = useState<Result[]>([]);
-  const [flash, setFlash] = useState<Result | null>(null);
-  const done = index >= scenes.length;
-
-  function onEnd(r: Result) {
-    setResults((prev) => [...prev, r]);
-    setFlash(r);
-    setTimeout(() => {
-      setFlash(null);
-      setIndex((i) => i + 1);
-    }, 900);
-  }
-
-  if (done) {
-    const wins = results.filter((r) => r.status === "won").length;
-    return (
-      <main className="fixed inset-0 grid place-items-center overflow-auto bg-[#1b1b2f] p-4">
-        <div className="flex w-full max-w-2xl flex-col items-center gap-4 rounded-3xl bg-card p-6 text-center">
-          <h2 className="text-5xl font-black">
-            {wins}/{scenes.length} 🎉
-          </h2>
-          <ul className="flex w-full flex-col gap-2 text-left">
-            {scenes.map((s, i) => (
-              <li key={i} className="flex items-start gap-2 rounded-xl bg-background p-2 font-bold">
-                <span>{results[i]?.status === "won" ? "✅" : "❌"}</span>
-                <span>{LESSON_BY_ID.get(s.lesson_id)?.text_mn}</span>
-              </li>
-            ))}
-          </ul>
-          <button className="btn" onClick={onExit}>
-            Дуусгах
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="fixed inset-0 bg-[#1b1b2f]">
-      <GameCanvas key={index} scene={scenes[index]} onEnd={onEnd} />
-      <div className="absolute right-3 top-8 z-10 rounded-full bg-black/40 px-3 py-1 font-black text-white">
-        {index + 1}/{scenes.length}
-      </div>
-      <button onClick={onExit} className="absolute left-3 top-8 z-10 grid size-11 place-items-center rounded-full bg-black/35 text-xl font-black text-white" aria-label="Гарах">
-        ✕
-      </button>
-      {flash && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-black/40 text-9xl animate-[fadeIn_150ms_ease-out]">
-          {flash.status === "won" ? "✅" : "❌"}
-        </div>
-      )}
-      <RotateHint />
     </main>
   );
 }
