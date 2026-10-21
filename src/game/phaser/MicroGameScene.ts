@@ -5,6 +5,7 @@ import { backdropArt, spriteArt } from "../registry/art";
 import { BACKDROP_BY_ID, type BackdropLayer } from "../registry/backdrops";
 import { SPRITE_BY_ID } from "../registry/sprites";
 import type { Scene } from "../schema";
+import { play } from "../sound";
 import type { Rasterized } from "./rasterize";
 
 // Renders one micro-game. All rules live in MicroGame; this class only draws,
@@ -34,6 +35,7 @@ export class MicroGameScene extends Phaser.Scene {
   private timerBar!: Phaser.GameObjects.Graphics;
   private hint?: Phaser.GameObjects.Text;
   private ended = false;
+  private lastTickSecond = Infinity;
 
   constructor() {
     super("micro");
@@ -44,6 +46,7 @@ export class MicroGameScene extends Phaser.Scene {
     this.engine = new MicroGame(data.scene);
     this.views = [];
     this.ended = false;
+    this.lastTickSecond = Infinity;
   }
 
   preload() {
@@ -72,6 +75,12 @@ export class MicroGameScene extends Phaser.Scene {
     if (this.ended) return;
     this.engine.tick(delta);
     this.drawTimer();
+    // Clock ticks in the last 2 seconds build tension.
+    const second = Math.ceil(this.engine.timeLeftMs / 1000);
+    if (this.engine.status === "playing" && second <= 2 && second < this.lastTickSecond && second > 0) {
+      this.lastTickSecond = second;
+      play("tick");
+    }
     if (this.engine.status === "lost") this.finish();
   }
 
@@ -162,6 +171,7 @@ export class MicroGameScene extends Phaser.Scene {
       view.setInteractive({ draggable: true, useHandCursor: true });
       view.on("dragstart", () => {
         if (!this.engine.canDrag(index)) return;
+        play("tap");
         this.clearHint();
         this.tweens.killTweensOf(view);
         view.setScale(baseScale(view) * 1.15).setDepth(40);
@@ -205,6 +215,7 @@ export class MicroGameScene extends Phaser.Scene {
       ],
       onComplete: () => {
         this.engine.start();
+        play("go");
         this.showHint();
       },
     });
@@ -263,11 +274,13 @@ export class MicroGameScene extends Phaser.Scene {
     const view = this.views[index];
     const res = this.engine.tap(index);
     if (res.kind === "found" || (res.kind === "won" && this.data_.scene.mechanic === "tap_hazards")) {
+      play("found");
       this.mark(view, "✅");
       this.tweens.add({ targets: view, scale: baseScale(view) * 0.8, duration: 150, yoyo: true });
     } else if (res.kind === "won") {
       this.mark(view, "✅");
     } else if (res.kind === "lost") {
+      play("wrong");
       this.mark(view, "❌");
     }
     if (res.kind === "won" || res.kind === "lost") this.finish();
@@ -287,6 +300,7 @@ export class MicroGameScene extends Phaser.Scene {
       return;
     }
     if (res.kind === "placed" || res.kind === "won") {
+      play("found");
       const target = this.engine.bodies[res.targetIndex];
       view.disableInteractive();
       this.tweens.add({ targets: view, x: target.x, y: target.y - 6, duration: 160, ease: "Back.out" });
@@ -294,6 +308,7 @@ export class MicroGameScene extends Phaser.Scene {
       if (res.kind === "won") this.finish();
       return;
     }
+    play("wrong");
     this.mark(this.views[res.hazardIndex], "💥");
     this.finish();
   }
@@ -316,6 +331,7 @@ export class MicroGameScene extends Phaser.Scene {
     const heroIndex = this.engine.bodies.find((b) => b.obj.sprite_id === "kid_hero")?.index;
     const hero = heroIndex === undefined ? undefined : this.views[heroIndex];
 
+    play(result.status === "won" ? "win" : "oops");
     if (result.status === "won") {
       this.celebrate();
       if (hero) this.tweens.add({ targets: hero, y: hero.y - 40, yoyo: true, repeat: 1, duration: 220, ease: "Quad.out" });

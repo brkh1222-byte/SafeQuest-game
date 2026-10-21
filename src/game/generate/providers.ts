@@ -59,6 +59,7 @@ export async function chat(
   model: string,
   messages: ChatMessage[],
   fetchImpl: typeof fetch = fetch,
+  opts: { maxTokens?: number } = {},
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
@@ -69,7 +70,7 @@ export async function chat(
         "content-type": "application/json",
         ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
       },
-      body: JSON.stringify({ model, messages, stream: false, ...SAMPLING }),
+      body: JSON.stringify({ model, messages, stream: false, ...SAMPLING, ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}) }),
       signal: controller.signal,
     });
     if (!res.ok) {

@@ -5,6 +5,7 @@ import type { Result } from "@/game/engine";
 import type { Scene } from "@/game/schema";
 import { GameCanvas } from "./GameCanvas";
 import { ResultCard } from "./ResultCard";
+import { PlayControls } from "./PlayControls";
 import { RotateHint } from "./RotateHint";
 
 /** Fullscreen play of a single scene with retry. Used by the stage and saved levels. */
@@ -42,6 +43,7 @@ export function PlayOverlay({ scene, onClose, closeLabel = "✕ Хаах" }: { s
           </button>
         </ResultCard>
       )}
+      <PlayControls />
       <RotateHint />
     </div>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { GameCanvas } from "@/components/GameCanvas";
 import { ResultCard } from "@/components/ResultCard";
+import { PlayControls } from "@/components/PlayControls";
 import { RotateHint } from "@/components/RotateHint";
 import type { World } from "@/game/constants";
 import type { Result } from "@/game/engine";
@@ -67,6 +68,7 @@ export function PlayScreen({ world, index }: { world: World; index: number }) {
           )}
         </ResultCard>
       )}
+      <PlayControls />
       <RotateHint />
     </main>
   );

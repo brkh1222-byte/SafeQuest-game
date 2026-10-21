@@ -32,3 +32,10 @@ export async function POST(req: Request) {
   const level = await getLevelStore().save({ scene: parsed.scene, prompt, source, model }, { judge });
   return Response.json({ id: level.id }, { status: 201 });
 }
+
+/** Clear the Judges' World list before the real pitch. Saved levels (QR links) remain. */
+export async function DELETE(req: Request) {
+  const denied = stageAuthError(req);
+  if (denied) return denied;
+  return Response.json({ cleared: await getLevelStore().clearJudges() });
+}
