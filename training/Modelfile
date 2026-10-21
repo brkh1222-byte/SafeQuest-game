@@ -1,0 +1,22 @@
+# SafeQuest fine-tuned Gemma 3 for Ollama on the demo laptop.
+#
+#   ollama create safequest-ft -f training/Modelfile
+#   .env.local: SQ_LOCAL_MODEL_FT=safequest-ft
+#
+# Put the GGUF exported by training/safequest_finetune.ipynb next to this file
+# (or change the path below).
+FROM ./safequest-ft.gguf
+
+# Must match render_prompt() in the notebook exactly: Gemma 3 has no system
+# role, so the system prompt is folded into the first user turn.
+TEMPLATE """<start_of_turn>user
+{{ if .System }}{{ .System }}
+
+{{ end }}{{ .Prompt }}<end_of_turn>
+<start_of_turn>model
+"""
+
+PARAMETER stop "<end_of_turn>"
+# The stage and eval send temperature 0.4 per request; this is the default otherwise.
+PARAMETER temperature 0.4
+PARAMETER num_ctx 4096
